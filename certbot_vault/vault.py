@@ -20,10 +20,12 @@ class Installer(common.Installer):
         add('url', help='HashiCorp Vault Server where to upload SSL certificates', default=os.environ.get('VAULT_ADDR', 'http://localhost:8200'))
         add('token', help='Vault Token required for authentication', default=os.environ.get('VAULT_TOKEN', ''))
         add('path', help='Path in Vault where to store SSL - e.g. kv/$domain (where kv is mount point of secret engine and $domain is appended automatically)', default='kv/letsencrypt')
+        add('single', help='Prevent Certbot from uploading SSL multiple times for each SAN provided. It will instead upload for the 1st one', action='store_true', default=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = hvac.Client(self.conf('url'), token=self.conf('token'))
+        self.curr = ''  # flag to test if we have multiple iterations
 
     def prepare(self):
         logger.info('Verifying authentication success...')
@@ -50,12 +52,18 @@ class Installer(common.Installer):
         path = f'{os.path.join(*path_comp[1:])}/{domain}'
         secret = {}
 
-        logger.info(f'Attempting to upload SSL to path {path} under mount point {mount_point}...')
-        for k, v in {'crt': cert_path, 'privkey': key_path, 'chain': chain_path}.items():
-            with open(v, 'r') as f:
-                secret[k] = f.read()
+        if self.conf('single') and self.curr != '':
+            logger.info(f'--vault-single provided, not uploading for SAN {domain}')
+        else:
+            self.curr = domain
+
+            logger.info(f'Attempting to upload SSL to path {path} under mount point {mount_point}...')
+            for k, v in {'crt': cert_path, 'privkey': key_path, 'chain': chain_path}.items():
+                with open(v, 'r') as f:
+                    secret[k] = f.read()
                 
-        self.client.secrets.kv.v2.create_or_update_secret(path=path, secret=secret, mount_point=mount_point)
+            logger.info(f'Uploading for SAN {domain}...')
+            self.client.secrets.kv.v2.create_or_update_secret(path=path, secret=secret, mount_point=mount_point)
 
     def enhance(self, domain, enhancement, options=None):
         pass
