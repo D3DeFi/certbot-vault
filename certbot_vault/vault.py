@@ -1,6 +1,8 @@
-import sys
 import hvac
 import logging
+
+from sys import exit
+from os import environ
 
 from certbot import interfaces
 from certbot.plugins import common
@@ -16,8 +18,8 @@ class Installer(common.Installer):
 
     @classmethod
     def add_parser_arguments(cls, add):
-        add('url', help='HashiCorp Vault Server where to upload SSL certificates')
-        add('token', help='Vault Token required for authentication')
+        add('url', help='HashiCorp Vault Server where to upload SSL certificates', default=environ['VAULT_ADDR'])
+        add('token', help='Vault Token required for authentication', default=environ['VAULT_TOKEN'])
         add('path', help='Path in Vault where to store SSL - e.g. kv/$domain (where $domain is appended automatically)', default='kv/letsencrypt')
 
     def __init__(self, *args, **kwargs):
@@ -28,7 +30,7 @@ class Installer(common.Installer):
         logger.info('Verifying authentication success...')
         if not self.client.is_authenticated():
             logger.error('Authentication against Vault failed!')
-            sys.exit(1)
+            exit(1)
 
         logger.info('Checking if token is set to expire...')
         token_info = self.client.lookup_token()
