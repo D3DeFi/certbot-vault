@@ -22,16 +22,13 @@ class Installer(common.Installer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        try:
-            self.client = hvac.Client(self.conf('url'), token=self.conf('token'))
-        except hvac.exceptions.InvalidRequest as e:
-            logger.error(e.msg)
-            sys.exit(1)
+        self.client = hvac.Client(self.conf('url'), token=self.conf('token'))
 
     def prepare(self):
         logger.info('Verifying authentication success...')
         if not self.client.is_authenticated():
             logger.error('Authentication against Vault failed!')
+            sys.exit(1)
 
         logger.info('Checking if token is set to expire...')
         token_info = self.client.lookup_token()
