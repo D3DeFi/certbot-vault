@@ -1,3 +1,4 @@
+import sys
 import hvac
 import logging
 
@@ -21,7 +22,11 @@ class Installer(common.Installer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.client = hvac.Client(self.conf('url'), token=self.conf('token'))
+        try:
+            self.client = hvac.Client(self.conf('url'), token=self.conf('token'))
+        except hvac.exceptions.InvalidRequest as e:
+            logger.error(e.msg)
+            sys.exit(1)
 
     def prepare(self):
         logger.info('Verifying authentication success...')
