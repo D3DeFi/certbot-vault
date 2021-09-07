@@ -23,6 +23,7 @@ class Installer(common.Installer):
         super().__init__(*args, **kwargs)
         self.client = hvac.Client(self.conf('url'), token=self.conf('token'))
 
+    def prepare(self):
         logger.info('Verifying authentication success...')
         if not self.client.is_authenticated():
             logger.error('Authentication against Vault failed!')
@@ -32,9 +33,6 @@ class Installer(common.Installer):
         if token_info['renewable']:
             logger.info('Attempting to renew token...')
             self.client.renew_token()
-
-    def prepare(self):
-        pass
 
     def more_info(self):
         return "Uploads LE certificates to HashiCorp Vault Server."
