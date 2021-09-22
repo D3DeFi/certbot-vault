@@ -1,9 +1,9 @@
 import os
 import hvac
 import logging
+import configobj
 
-from sys import exit
-from certbot import interfaces
+from certbot import errors
 from certbot.plugins import common
 
 
@@ -17,21 +17,37 @@ class Installer(common.Installer):
 
     @classmethod
     def add_parser_arguments(cls, add):
-        add('url', help='HashiCorp Vault Server where to upload SSL certificates', default=os.environ.get('VAULT_ADDR', 'http://localhost:8200'))
-        add('token', help='Vault Token required for authentication', default=os.environ.get('VAULT_TOKEN', ''))
+        add('credentials', help='HashiCorp Vault credentials INI file - absolute path')
         add('path', help='Path in Vault where to store SSL - e.g. kv/$domain (where kv is mount point of secret engine and $domain is appended automatically)', default='kv/letsencrypt')
         add('single', help='Prevent Certbot from uploading SSL multiple times for each SAN provided. It will instead upload for the 1st one', action='store_true', default=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.client = hvac.Client(self.conf('url'), token=self.conf('token'))
         self.curr = ''  # flag to test if we have multiple iterations
 
     def prepare(self):
+        logger.info('Attempting to parse credentials INI file {}'.format(self.conf('credentials')))
+        try:
+            self.confobj = configobj.ConfigObj(self.conf('credentials'))
+        except configobj.ConfigObjError as e:
+            logger.debug('Error parsing credentials configuration: %s', e, exc_info=True)
+            raise errors.PluginError('Error parsing credentials configuration: {0}'.format(e))
+
+        addr = self.confobj.get('vault-addr', default=os.environ.get('VAULT_ADDR', ''))
+        token = self.confobj.get('vault-token', default=os.environ.get('VAULT_TOKEN', ''))
+
+        if not addr or not token:
+            logger.error('Error fetching "vault-addr" or "vault-token" from credentials INI file or ENV variables')
+            raise errors.PluginError('Error fetching "vault-addr" or "vault-token" credentials')
+
+
+        logger.info('Got URL: {0}. Attempting to log in...'.format(addr))
+        self.client = hvac.Client(addr, token=token)
+
         logger.info('Verifying authentication success...')
         if not self.client.is_authenticated():
             logger.error('Authentication against Vault failed!')
-            exit(1)
+            raise errors.PluginError("Error authenticating against Vault server: {0}".format(e))
 
         logger.info('Checking if token is set to expire...')
         token_info = self.client.lookup_token()

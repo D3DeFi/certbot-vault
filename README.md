@@ -1,13 +1,48 @@
 Certbot-Vault
 =============
 
+Running
+-------
+
+Create file with credentials (e.g. /etc/letsencrypt/.hashicorp-vault-creds):
+```ini
+vault-url=https://vault.example.com:8200/
+vault-token=s.AADSFSDHJGJHGDFGSERWETTRHTT
+```
+
+Or define ENV files:
+```bash
+export VAULT_ADDR=https://vault.example.com:8200/
+export VAULT_TOKEN=s.AADSFSDHJGJHGDFGSERWETTRHTT
+```
+
+Run installer plugin separately (skip `--vault-credentials` if creds were provided via ENV variables):
+```bash
+certbot install -i vault --vault-credentials=/etc/letsencrypt/.hashicorp-vault-creds --vault-path='secret/le-certs' --vault-single --cert-name example.com
+```
+
+Or as a part or certbot run:
+```bash
+certbot run -a ..... -i vault ... -d example.com,www.example.com
+```
+
+CLI arguments
+-------------
+
+* `--vault-credentials` - INI file with `vault-addr=XYZ` and `vault-token=XYZ` key pairs. If not provided, script will attempt to read ENV variables `VAULT_ADDR` and `VAULT_TOKEN`.
+* `--vault-path` - path in Vault where to store certificates, first component is expected to be engine mount point (e.g. secret, kv, etc...).
+* `--vault-single` - upload certs only once if provided multiple SANs via `-d example.com,www.example.com` - in this case only kv/letsencrypt/example.com will be created.
+
+Developing
+----------
+
 How to setup test env documented [here](https://certbot.eff.org/docs/contributing.html#running-manual-integration-tests).
 
 Currently supports only kv store.
 
 Generate test cert:
 
-    certbot_test --standalone -d test.example.com
+    certbot_test certonly --standalone -d test.example.com
 
 Install cert:
 
