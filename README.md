@@ -6,7 +6,7 @@ Running
 
 Create file with credentials (e.g. /etc/letsencrypt/.hashicorp-vault-creds):
 ```ini
-vault-url=https://vault.example.com:8200/
+vault-addr=https://vault.example.com:8200/
 vault-token=s.AADSFSDHJGJHGDFGSERWETTRHTT
 ```
 
