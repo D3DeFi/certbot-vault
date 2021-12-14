@@ -31,6 +31,7 @@ CLI arguments
 
 * `--vault-credentials` - INI file with `vault-addr=XYZ` and `vault-token=XYZ` key pairs. If not provided, script will attempt to read ENV variables `VAULT_ADDR` and `VAULT_TOKEN`.
 * `--vault-path` - path in Vault where to store certificates, first component is expected to be engine mount point (e.g. secret, kv, etc...).
+* `--vault-dpath` - last component of path is always taken from certificate's SAN (e.g. kv/\*.example.com). This option can override the domain to something else.
 * `--vault-single` - upload certs only once if provided multiple SANs via `-d example.com,www.example.com` - in this case only kv/letsencrypt/example.com will be created.
 
 Developing

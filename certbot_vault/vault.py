@@ -19,6 +19,7 @@ class Installer(common.Installer):
     def add_parser_arguments(cls, add):
         add('credentials', help='HashiCorp Vault credentials INI file - absolute path')
         add('path', help='Path in Vault where to store SSL - e.g. kv/$domain (where kv is mount point of secret engine and $domain is appended automatically)', default='kv/letsencrypt')
+        add('dpath', help='Overrides domain in path component if domain name is not desirable (e.g. wildcard)', default='')
         add('single', help='Prevent Certbot from uploading SSL multiple times for each SAN provided. It will instead upload for the 1st one', action='store_true', default=False)
 
     def __init__(self, *args, **kwargs):
@@ -65,7 +66,8 @@ class Installer(common.Installer):
         logger.info('Parsing mount point from path...')
         path_comp = self.conf('path').split('/')
         mount_point = os.path.join(path_comp[0])
-        path = f'{os.path.join(*path_comp[1:])}/{domain}'
+        dpath = self.conf('dpath')  # override domain component in path if defined
+        path = f'{os.path.join(*path_comp[1:])}/{domain if len(dpath) == 0 else dpath}'
         secret = {}
 
         if self.conf('single') and self.curr != '':
