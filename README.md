@@ -37,7 +37,31 @@ CLI arguments
 Developing
 ----------
 
-How to setup test env documented [here](https://certbot.eff.org/docs/contributing.html#running-manual-integration-tests).
+How to setup test env documented [here](https://certbot.eff.org/docs/contributing.html#running-manual-integration-tests). Tl;dr version below:
+
+    # clone upstream certbot
+    git clone https://github.com/certbot/certbot.git
+    cd certbot
+
+    # setup virtualenv and install our plugin
+    python3 tools/venv.py
+    source venv/bin/activate
+    pip install -e ../certbot-vault
+
+    # run testing ACME server
+    run_acme_server &
+
+    # start Vault dev server and copy root token
+    vault server -dev &
+
+    # generate credentials file for certbot-vault plugin
+    echo -e 'vault-addr=http://127.0.0.1:8200\nvault-token=ABCDEFG' > ~/dev-hashi-certbot
+
+    # issue test certficate
+    certbot_test run --standalone -d test.example.com -i vault --vault-credentials ~/dev-hashi-certbot --vault-path secret/
+
+    # now it should be present in Vault, after checking it, you can try to renew for example
+    certbot_test renew
 
 Currently supports only kv store.
 
