@@ -3,7 +3,7 @@ import hvac
 import logging
 import configobj
 
-from certbot import errors
+from certbot import errors, interfaces
 from certbot.plugins import common
 
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 
-class Installer(common.Installer):
+class Installer(common.Installer, interfaces.RenewDeployer):
 
     description = "Certbot Vault Installer plugin"
 
@@ -107,3 +107,10 @@ class Installer(common.Installer):
     def restart(self):
         pass
 
+    def renew_deploy(self, lineage, *args, **kwargs):
+        logger.info('Triggering certificate deployer during renewal...')
+
+        # mimick certbot behavior as each SAN calls deploy_cert() and we want to let deploy_cert() sort out
+        # how to upload certificates based on options in renewal/ conf directory
+        for san in lineage.names():
+            self.deploy_cert(san, lineage.cert_path, lineage.key_path, lineage.chain_path, lineage.fullchain_path)
