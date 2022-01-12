@@ -3,7 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='certbot-vault',
-    version='0.3.0',
+    version='0.4.0',
     description='Certbot plugin for interaction with HashiCorp Vault',
     url='https://github.com/D3DeFi/certbot-vault',
     author='Dusan Matejka',
