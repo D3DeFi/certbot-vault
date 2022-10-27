@@ -1,10 +1,10 @@
-import os
-import hvac
 import logging
-import configobj
 
 from certbot import errors, interfaces
+from certbot.compat import os
 from certbot.plugins import common
+import configobj
+import hvac
 
 
 logger = logging.getLogger(__name__)
@@ -27,34 +27,44 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         self.curr = ''  # flag to test if we have multiple iterations
 
     def prepare(self):
-        logger.info('Attempting to parse credentials INI file {}'.format(self.conf('credentials')))
+        logger.info('Attempting to parse credentials INI file %s',
+                    self.conf('credentials'))
         try:
             self.confobj = configobj.ConfigObj(self.conf('credentials'))
-        except configobj.ConfigObjError as e:
-            logger.debug('Error parsing credentials configuration: %s', e, exc_info=True)
-            raise errors.PluginError('Error parsing credentials configuration: {0}'.format(e))
 
-        addr = self.confobj.get('vault-addr', default=os.environ.get('VAULT_ADDR', ''))
-        token = self.confobj.get('vault-token', default=os.environ.get('VAULT_TOKEN', ''))
+        except configobj.ConfigObjError as e:  # pylint: disable=invalid-name
+            logger.debug('Error parsing credentials configuration: %s', e,
+                         exc_info=True)
+            raise errors.PluginError(
+                f'Error parsing credentials configuration: {e}')
+
+        addr = self.confobj.get(
+            'vault-addr', default=os.environ.get('VAULT_ADDR', ''))
+        token = self.confobj.get(
+            'vault-token', default=os.environ.get('VAULT_TOKEN', ''))
 
         if not addr or not token:
-            logger.error('Error fetching "vault-addr" or "vault-token" from credentials INI file or ENV variables')
-            raise errors.PluginError('Error fetching "vault-addr" or "vault-token" credentials')
+            logger.error(
+                'Error fetching "vault-addr" or "vault-token" from credentials'
+                ' INI file or ENV variables')
+            raise errors.PluginError(
+                'Error fetching "vault-addr" or "vault-token" credentials')
 
 
-        logger.info('Got URL: {0}. Attempting to log in...'.format(addr))
+        logger.info('Got URL: %s. Attempting to log in...', addr)
         self.client = hvac.Client(addr, token=token)
 
         logger.info('Verifying authentication success...')
         if not self.client.is_authenticated():
             logger.error('Authentication against Vault failed!')
-            raise errors.PluginError("Error authenticating against Vault server: {0}".format(e))
+            raise errors.PluginError(
+                f"Error authenticating against Vault server: {e}")
 
         logger.info('Checking if token is set to expire...')
         token_info = self.client.lookup_token()
         if token_info['renewable']:
             logger.info('Attempting to renew token...')
-            self.client.renew_token()
+            self.client.renew_token(token)
 
     def more_info(self):
         return "Uploads LE certificates to HashiCorp Vault Server."
@@ -67,27 +77,33 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         path_comp = self.conf('path').split('/')
         mount_point = os.path.join(path_comp[0])
         dpath = self.conf('dpath')  # override domain component in path if defined
-        path = f'{os.path.join(*path_comp[1:])}/{domain if len(dpath) == 0 else dpath}'
+        print(path_comp)
+        path = f'{os.path.join("/", *path_comp[1:])}/{dpath if dpath else domain}'
         secret = {}
 
         if self.conf('single') and self.curr != '':
-            logger.info(f'--vault-single provided, not uploading for SAN {domain}')
+            logger.info(
+                '--vault-single provided, not uploading for SAN %s', domain)
         else:
             self.curr = domain
 
-            logger.info(f'Attempting to upload SSL to path {path} under mount point {mount_point}...')
+            logger.info(
+                'Attempting to upload SSL to path %s under mount point %s...',
+                path, mount_point)
             for k, v in {'crt': cert_path, 'privkey': key_path, 'chain': chain_path}.items():
                 with open(v, 'r') as f:
                     secret[k] = f.read()
-                
-            logger.info(f'Uploading for SAN {domain}...')
-            self.client.secrets.kv.v2.create_or_update_secret(path=path, secret=secret, mount_point=mount_point)
+
+            logger.info('Uploading for SAN %s...',domain)
+            self.client.secrets.kv.v2.create_or_update_secret(
+                path=path, secret=secret, mount_point=mount_point)
 
     def enhance(self, domain, enhancement, options=None):
         pass
 
     def supported_enhancements(self):
         return []
+
 
     def get_all_certs_keys(self):
         return []
