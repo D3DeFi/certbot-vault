@@ -1,3 +1,4 @@
+"""Vault Installer"""
 import logging
 
 from certbot import errors, interfaces
@@ -9,18 +10,30 @@ import hvac
 
 logger = logging.getLogger(__name__)
 
-
-
 class Installer(common.Installer, interfaces.RenewDeployer):
+    """Certbot Vault Installer plugin
 
+    This plugin allows certbot to push certificates to a Vault server
+    """
     description = "Certbot Vault Installer plugin"
 
     @classmethod
     def add_parser_arguments(cls, add):
-        add('credentials', help='HashiCorp Vault credentials INI file - absolute path')
-        add('path', help='Path in Vault where to store SSL - e.g. kv/$domain (where kv is mount point of secret engine and $domain is appended automatically)', default='kv/letsencrypt')
-        add('dpath', help='Overrides domain in path component if domain name is not desirable (e.g. wildcard)', default='')
-        add('single', help='Prevent Certbot from uploading SSL multiple times for each SAN provided. It will instead upload for the 1st one', action='store_true', default=False)
+        add('credentials',
+            help='HashiCorp Vault credentials INI file - absolute path')
+        add('path',
+            help=('Path in Vault where to store SSL - e.g. kv/$domain (where '
+                  'kv is mount point of secret engine and $domain is appended'
+                  ' automatically)'),
+            default='kv/letsencrypt')
+        add('dpath',
+            help=('Overrides domain in path component if domain name is not'
+                  ' desirable (e.g. wildcard)'),
+                  default='')
+        add('single',
+            help=('Prevent Certbot from uploading SSL multiple times for each '
+                  'SAN provided. It will instead upload for the 1st one'),
+            action='store_true', default=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -30,7 +43,8 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         logger.info('Attempting to parse credentials INI file %s',
                     self.conf('credentials'))
         try:
-            self.confobj = configobj.ConfigObj(self.conf('credentials'))
+            self.confobj = configobj.ConfigObj(  # pylint: disable=attribute-defined-outside-init
+                self.conf('credentials'))
 
         except configobj.ConfigObjError as e:  # pylint: disable=invalid-name
             logger.debug('Error parsing credentials configuration: %s', e,
@@ -52,7 +66,7 @@ class Installer(common.Installer, interfaces.RenewDeployer):
 
 
         logger.info('Got URL: %s. Attempting to log in...', addr)
-        self.client = hvac.Client(addr, token=token)
+        self.client = hvac.Client(addr, token=token)  # pylint: disable=attribute-defined-outside-init
 
         logger.info('Verifying authentication success...')
         if not self.client.is_authenticated():
@@ -72,29 +86,46 @@ class Installer(common.Installer, interfaces.RenewDeployer):
     def get_all_names(self):
         return []
 
-    def deploy_cert(self, domain, cert_path, key_path, chain_path, fullchain_path):
+    def deploy_cert(  # pylint: disable=too-many-arguments
+            self, domain, cert_path, key_path, chain_path, fullchain_path):
+        """
+        Parses mount-point and path, and uploads certificate(s) to the
+        Vault Server, assuming that the connection was successful in the
+        prepare function.
+
+        :param domain: The domain for which the certificate was issued
+        :param cert_path: The path to the cert file.
+        :param key_path: The path to the private key file.
+        :param chain_path: The path to the chain file.
+        :param fullchain_path: The path to the fullchain file.
+            Currently unused
+        """
+        del fullchain_path  # Unused in this plugin
+
         logger.info('Parsing mount point from path...')
         path_comp = self.conf('path').split('/')
         mount_point = os.path.join(path_comp[0])
         dpath = self.conf('dpath')  # override domain component in path if defined
-        print(path_comp)
-        path = f'{os.path.join("/", *path_comp[1:])}/{dpath if dpath else domain}'
-        secret = {}
+        path = (f'{os.path.join("/", *path_comp[1:])}/'
+                f'{dpath if dpath else domain}')
+        print(path)
 
-        if self.conf('single') and self.curr != '':
+        if self.conf('single') and self.curr:
             logger.info(
                 '--vault-single provided, not uploading for SAN %s', domain)
         else:
             self.curr = domain
+            secret = {}
 
             logger.info(
                 'Attempting to upload SSL to path %s under mount point %s...',
                 path, mount_point)
-            for k, v in {'crt': cert_path, 'privkey': key_path, 'chain': chain_path}.items():
-                with open(v, 'r') as f:
+            for k, v in {'crt': cert_path, 'privkey': key_path,  # pylint: disable=invalid-name
+                         'chain': chain_path}.items():
+                with open(v, 'r') as f:  # pylint: disable=invalid-name, unspecified-encoding
                     secret[k] = f.read()
 
-            logger.info('Uploading for SAN %s...',domain)
+            logger.info('Uploading for SAN %s...', domain)
             self.client.secrets.kv.v2.create_or_update_secret(
                 path=path, secret=secret, mount_point=mount_point)
 
@@ -102,10 +133,6 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         pass
 
     def supported_enhancements(self):
-        return []
-
-
-    def get_all_certs_keys(self):
         return []
 
     def save(self, title=None, temporary=False):
@@ -124,9 +151,15 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         pass
 
     def renew_deploy(self, lineage, *args, **kwargs):
+        # To comply with pylint's style guide, the unused parameters
+        # are deleted
+        del args, kwargs  # Unused here
         logger.info('Triggering certificate deployer during renewal...')
 
-        # mimick certbot behavior as each SAN calls deploy_cert() and we want to let deploy_cert() sort out
-        # how to upload certificates based on options in renewal/ conf directory
+        # mimick certbot behavior as each SAN calls deploy_cert() and
+        # we want to let deploy_cert() sort out
+        # how to upload certificates based on options in renewal/ conf
+        # directory
         for san in lineage.names():
-            self.deploy_cert(san, lineage.cert_path, lineage.key_path, lineage.chain_path, lineage.fullchain_path)
+            self.deploy_cert(san, lineage.cert_path, lineage.key_path,
+                             lineage.chain_path, lineage.fullchain_path)

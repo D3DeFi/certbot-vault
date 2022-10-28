@@ -4,7 +4,4 @@ __pycache__
 
 .project
 .pydevproject
-
-/conf/
-/logs/
-/wd/
+.settings

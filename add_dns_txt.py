@@ -11,13 +11,13 @@ while True:
 
     except KeyboardInterrupt:
         print("Goodbye")
+        requests.post("http://localhost:8055/clear-txt",json={
+            "host": "_acme-challenge.toto123.fr."})
         break
 
     else:
-        res = requests.post("http://localhost:8055/set-txt", json={
+        print(requests.post("http://localhost:8055/set-txt", json={
             "host": "_acme-challenge.toto123.fr.",
-            "value": "nGG-0BfA3dTzMRIBTOXeMaQsh0_HqfWHCyZYeJ5as3M"},
-            headers={"Accept": "*/*", "Content-Type": "application/x-www-form-urlencoded"}
-        )
-
-        print(res.content)
+            "value": value},
+             headers={"Content-Type": "application/x-www-form-urlencoded"}
+        ))
