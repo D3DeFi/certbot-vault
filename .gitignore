@@ -5,3 +5,4 @@ __pycache__
 .project
 .pydevproject
 .settings
+add_dns_txt.py
