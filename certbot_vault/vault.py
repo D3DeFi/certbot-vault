@@ -32,7 +32,9 @@ class Installer(common.Installer, interfaces.RenewDeployer):
                   default='')
         add('single',
             help=('Prevent Certbot from uploading SSL multiple times for each '
-                  'SAN provided. It will instead upload for the 1st one'),
+                  'SAN provided. It will instead upload for the 1st provided '
+                  'one. (e.g. with "-d example.com,www.example.com", it will '
+                  'only add a certificate in example.com)'),
             action='store_true', default=False)
 
     def __init__(self, *args, **kwargs):
