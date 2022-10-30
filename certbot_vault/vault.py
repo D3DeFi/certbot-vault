@@ -1,10 +1,10 @@
-import os
-import hvac
 import logging
-import configobj
+import os
 
 from certbot import errors, interfaces
 from certbot.plugins import common
+import configobj
+import hvac
 
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         path_comp = self.conf('path').split('/')
         mount_point = os.path.join(path_comp[0])
         dpath = self.conf('dpath')  # override domain component in path if defined
-        path = f'{os.path.join(*path_comp[1:])}/{domain if len(dpath) == 0 else dpath}'
+        path = f'{os.path.join("/", *path_comp[1:])}/{domain if len(dpath) == 0 else dpath}'
         secret = {}
 
         if self.conf('single') and self.curr != '':
