@@ -48,13 +48,18 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         logger.info('Verifying authentication success...')
         if not self.client.is_authenticated():
             logger.error('Authentication against Vault failed!')
-            raise errors.PluginError("Error authenticating against Vault server: {0}".format(e))
+            raise errors.PluginError('Error authenticating against Vault server')
+
 
         logger.info('Checking if token is set to expire...')
         token_info = self.client.lookup_token()
-        if token_info['renewable']:
+
+        if token_info["data"]['renewable']:
+            # The token infos are in the data dictionnary, not directly in the
+            # token_info which instead contains the infos of the lookup request
+
             logger.info('Attempting to renew token...')
-            self.client.renew_token()
+            self.client.renew_token(self.client.token)
 
     def more_info(self):
         return "Uploads LE certificates to HashiCorp Vault Server."
@@ -67,7 +72,7 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         path_comp = self.conf('path').split('/')
         mount_point = os.path.join(path_comp[0])
         dpath = self.conf('dpath')  # override domain component in path if defined
-        path = f'{os.path.join("/", *path_comp[1:])}/{domain if len(dpath) == 0 else dpath}'
+        path = f'{os.path.join("/", *path_comp[1:])}/{dpath if dpath else domain}'
         secret = {}
 
         if self.conf('single') and self.curr != '':
@@ -79,7 +84,7 @@ class Installer(common.Installer, interfaces.RenewDeployer):
             for k, v in {'crt': cert_path, 'privkey': key_path, 'chain': chain_path}.items():
                 with open(v, 'r') as f:
                     secret[k] = f.read()
-                
+
             logger.info(f'Uploading for SAN {domain}...')
             self.client.secrets.kv.v2.create_or_update_secret(path=path, secret=secret, mount_point=mount_point)
 
