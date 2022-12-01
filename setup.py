@@ -6,7 +6,7 @@ def readme():
         return file.read()
 
 setup(
-    name='Test-package-Drasli',
+    name='certbot-vault-installer',
     version=os.getenv("GITHUB_REF", "0.0.0").split("/")[-1],
     description='Certbot plugin for interaction with HashiCorp Vault',
     url='https://github.com/D3DeFi/certbot-vault',
