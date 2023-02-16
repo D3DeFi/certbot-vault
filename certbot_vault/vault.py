@@ -54,7 +54,7 @@ class Installer(common.Installer, interfaces.RenewDeployer):
         logger.info('Checking if token is set to expire...')
         token_info = self.client.lookup_token()
 
-        if token_info["data"]['renewable']:
+        if token_info['data'].get('renewable', False):
             # The token infos are in the data dictionnary, not directly in the
             # token_info which instead contains the infos of the lookup request
 
