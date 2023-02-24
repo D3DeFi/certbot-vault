@@ -59,7 +59,7 @@ class Installer(common.Installer, interfaces.RenewDeployer):
             # token_info which instead contains the infos of the lookup request
 
             logger.info('Attempting to renew token...')
-            self.client.renew_token(self.client.token)
+            self.client.auth.token.renew_self()
 
     def more_info(self):
         return "Uploads LE certificates to HashiCorp Vault Server."
